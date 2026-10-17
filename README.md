@@ -1,10 +1,25 @@
 # Kart Cüzdanı
 
+[![CI](https://github.com/pietro379/kart-cuzdani/actions/workflows/ci.yml/badge.svg)](https://github.com/pietro379/kart-cuzdani/actions/workflows/ci.yml)
+![Flutter](https://img.shields.io/badge/Flutter-02569B?logo=flutter&logoColor=white)
+![Dart](https://img.shields.io/badge/Dart-0175C2?logo=dart&logoColor=white)
+![Platform](https://img.shields.io/badge/platform-Android%20%7C%20iOS-3ddc84)
+![Çevrimdışı](https://img.shields.io/badge/%C3%A7al%C4%B1%C5%9Fma-%C3%A7evrimd%C4%B1%C5%9F%C4%B1-10b981)
+
 KVKK uyumlu, tamamen çevrimdışı çalışan ve tüm verileri cihazda şifreli saklayan
 kredi/banka kartı cüzdanı. Flutter ile Android ve iOS için geliştirilmiştir.
 
 > Uygulama hiçbir veriyi internete göndermez. Release sürümünde ağ erişim izni
 > bulunmaz.
+
+<!-- Ekran görüntüleri: docs/screenshots/ altına ekleyip burada tablo olarak göster (kart yığını, 3B çevirme, kart ekleme, ayarlar). -->
+
+## Öne çıkanlar
+
+- **Gizlilik tasarımın merkezinde:** Release manifest'te `INTERNET` izni yok, kart verisi PIN doğrulanmadan belleğe bile yüklenmez.
+- **Gerçek güvenlik pratikleri:** Tuzlu PBKDF2 ile PIN türetme, Keystore/Keychain destekli şifreli depolama, kaba kuvvet kilidi, ekran görüntüsü koruması.
+- **Zengin arayüz:** Üst üste binen kart yığını, 3B kart çevirme, canlı önizlemeli kart ekleme, açık/koyu tema.
+- **Test edilebilir yapı:** PIN servisi, doğrulayıcılar, depolama, ayarlar ve ekran akışları için birim ve widget testleri; her push'ta CI'da çalışır.
 
 ## Özellikler
 
@@ -60,7 +75,8 @@ flutter test
 ```
 
 Birim ve widget testleri; PIN servisi, özetleme, doğrulayıcılar, kart modeli,
-depolama, ayarlar ve tüm ekran akışlarını kapsar.
+depolama, ayarlar ve tüm ekran akışlarını kapsar. GitHub Actions her push ve
+pull request'te analiz ve testleri çalıştırır.
 
 ## Proje yapısı
 
