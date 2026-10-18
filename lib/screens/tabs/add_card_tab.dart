@@ -15,10 +15,13 @@ import '../../widgets/flip_card.dart';
 
 /// Yeni kart ekleme formu: canlı önizleme + renk paleti + doğrulamalı alanlar.
 class AddCardTab extends StatefulWidget {
-  const AddCardTab({super.key, this.onSaved});
+  const AddCardTab({super.key, this.onSaved, this.initialCard});
 
   /// Kart başarıyla kaydedildikten sonra çağrılır (örn. Kartlarım'a geçmek için).
   final VoidCallback? onSaved;
+
+  /// Doluysa form bu kartı düzenler; kaydedince yeni kart eklemek yerine günceller.
+  final CardModel? initialCard;
 
   @override
   State<AddCardTab> createState() => _AddCardTabState();
@@ -44,9 +47,21 @@ class _AddCardTabState extends State<AddCardTab> {
 
   bool get _showBack => _cvvFocus.hasFocus || _pinFocus.hasFocus;
 
+  bool get _isEditing => widget.initialCard != null;
+
   @override
   void initState() {
     super.initState();
+    final initial = widget.initialCard;
+    if (initial != null) {
+      _name.text = initial.name;
+      _number.text = formatCardNumber(initial.number, masked: false);
+      _expiry.text = initial.expiryText;
+      _cvv.text = initial.cvv;
+      _pin.text = initial.pin ?? '';
+      _backgroundId = initial.backgroundId;
+      _accentId = initial.accentId;
+    }
     _cvvFocus.addListener(_onFocusChanged);
     _pinFocus.addListener(_onFocusChanged);
   }
@@ -74,7 +89,7 @@ class _AddCardTabState extends State<AddCardTab> {
 
     final (month, year) = parseExpiry(_expiry.text)!;
     final card = CardModel(
-      id: CardModel.generateId(),
+      id: widget.initialCard?.id ?? CardModel.generateId(),
       name: _name.text.trim(),
       number: digitsOnly(_number.text),
       expiryMonth: month,
@@ -83,14 +98,18 @@ class _AddCardTabState extends State<AddCardTab> {
       pin: _pin.text.isEmpty ? null : _pin.text,
       backgroundId: _backgroundId,
       accentId: _accentId,
-      createdAt: DateTime.now(),
+      createdAt: widget.initialCard?.createdAt ?? DateTime.now(),
     );
 
     final cards = AppScope.of(context).cards;
     final messenger = ScaffoldMessenger.of(context);
     setState(() => _saving = true);
     try {
-      await cards.add(card);
+      if (_isEditing) {
+        await cards.update(card);
+      } else {
+        await cards.add(card);
+      }
     } catch (_) {
       if (!mounted) return;
       setState(() => _saving = false);
@@ -100,6 +119,14 @@ class _AddCardTabState extends State<AddCardTab> {
       return;
     }
     if (!mounted) return;
+
+    if (_isEditing) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('"${card.name}" güncellendi')),
+      );
+      widget.onSaved?.call();
+      return;
+    }
 
     // Hassas veriler kaydedildikten sonra formda bekletilmez.
     for (final c in [_name, _number, _expiry, _cvv, _pin]) {
@@ -128,201 +155,217 @@ class _AddCardTabState extends State<AddCardTab> {
     return Form(
       key: _formKey,
       autovalidateMode: _autovalidate,
-      child: ListView(
-        key: const ValueKey('add_card_list'),
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+      // Önizleme formun üstünde sabit kalır; alanlar kaydırılırken kart görünür.
+      child: Column(
         children: [
-          ListenableBuilder(
-            listenable: Listenable.merge([
-              _name,
-              _number,
-              _expiry,
-              _cvv,
-              _pin,
-              settings,
-            ]),
-            builder: (context, _) {
-              final background = CardSwatches.background(_backgroundId);
-              String secret(String value, String placeholder) => value.isEmpty
-                  ? placeholder
-                  : _showSecrets
-                  ? value
-                  : '*' * value.length;
-              return FlipCard(
-                flipped: _showBack,
-                front: CreditCardView(
-                  background: background,
-                  accent: CardSwatches.accent(_accentId),
-                  brand: _brand,
-                  name: _name.text.trim().isEmpty
-                      ? 'Kart İsmi'
-                      : _name.text.trim(),
-                  numberText: _number.text.isEmpty
-                      ? '•••• •••• •••• ••••'
-                      : formatCardNumber(_number.text, masked: false),
-                  expiryText: _expiry.text.isEmpty ? 'AA/YY' : _expiry.text,
-                  holderName: settings.userName.isEmpty
-                      ? 'KART SAHİBİ'
-                      : turkishUpperCase(settings.userName),
-                ),
-                back: CardBackView(
-                  background: background,
-                  brand: _brand,
-                  cvvText: secret(_cvv.text, '•' * _brand.cvvLength),
-                  pinText: _pin.text.isEmpty ? null : secret(_pin.text, ''),
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: 24),
-          const _SectionLabel('KART RENGİ'),
-          _SwatchPalette(
-            keyPrefix: 'bg',
-            gradients: CardSwatches.backgroundGradients,
-            solids: CardSwatches.backgroundSolids,
-            selectedId: _backgroundId,
-            onSelected: (id) => setState(() => _backgroundId = id),
-          ),
-          const SizedBox(height: 20),
-          const _SectionLabel('DESEN RENGİ'),
-          _SwatchPalette(
-            keyPrefix: 'accent',
-            gradients: CardSwatches.accentGradients,
-            solids: CardSwatches.accentSolids,
-            selectedId: _accentId,
-            onSelected: (id) => setState(() => _accentId = id),
-          ),
-          const SizedBox(height: 24),
-          const _SectionLabel('KART BİLGİLERİ'),
-          TextFormField(
-            key: const ValueKey('add_card_name'),
-            controller: _name,
-            textCapitalization: TextCapitalization.words,
-            textInputAction: TextInputAction.next,
-            maxLength: CardValidators.maxNameLength,
-            decoration: const InputDecoration(
-              labelText: 'Kart İsmi',
-              hintText: 'Örn. Maaş Kartı',
-              prefixIcon: Icon(Icons.label_outline),
-              counterText: '',
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+            child: ListenableBuilder(
+              listenable: Listenable.merge([
+                _name,
+                _number,
+                _expiry,
+                _cvv,
+                _pin,
+                settings,
+              ]),
+              builder: (context, _) {
+                final background = CardSwatches.background(_backgroundId);
+                String secret(String value, String placeholder) => value.isEmpty
+                    ? placeholder
+                    : _showSecrets
+                    ? value
+                    : '*' * value.length;
+                return FlipCard(
+                  flipped: _showBack,
+                  front: CreditCardView(
+                    background: background,
+                    accent: CardSwatches.accent(_accentId),
+                    brand: _brand,
+                    name: _name.text.trim().isEmpty
+                        ? 'Kart İsmi'
+                        : _name.text.trim(),
+                    numberText: _number.text.isEmpty
+                        ? '•••• •••• •••• ••••'
+                        : formatCardNumber(_number.text, masked: false),
+                    expiryText: _expiry.text.isEmpty ? 'AA/YY' : _expiry.text,
+                    holderName: settings.userName.isEmpty
+                        ? 'KART SAHİBİ'
+                        : turkishUpperCase(settings.userName),
+                  ),
+                  back: CardBackView(
+                    background: background,
+                    brand: _brand,
+                    cvvText: secret(_cvv.text, '•' * _brand.cvvLength),
+                    pinText: _pin.text.isEmpty ? null : secret(_pin.text, ''),
+                  ),
+                );
+              },
             ),
-            validator: CardValidators.name,
           ),
-          const SizedBox(height: 14),
-          ListenableBuilder(
-            listenable: _number,
-            builder: (context, _) => _SensitiveField(
-              fieldKey: const ValueKey('add_card_number'),
-              controller: _number,
-              label: 'Kart Numarası',
-              hint: '0000 0000 0000 0000',
-              icon: Icons.credit_card,
-              formatters: [CardNumberInputFormatter()],
-              validator: CardValidators.number,
-              suffix: _brand == CardBrand.unknown
-                  ? null
-                  : Padding(
-                      padding: const EdgeInsets.only(right: 14),
-                      child: Text(
-                        _brand.label,
-                        style: theme.textTheme.labelLarge?.copyWith(
-                          color: theme.colorScheme.primary,
-                          fontWeight: FontWeight.w800,
-                          fontStyle: FontStyle.italic,
+          Expanded(
+            child: ListView(
+              key: const ValueKey('add_card_list'),
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+              children: [
+                const _SectionLabel('KART RENGİ'),
+                _SwatchPalette(
+                  keyPrefix: 'bg',
+                  gradients: CardSwatches.backgroundGradients,
+                  solids: CardSwatches.backgroundSolids,
+                  selectedId: _backgroundId,
+                  onSelected: (id) => setState(() => _backgroundId = id),
+                ),
+                const SizedBox(height: 20),
+                const _SectionLabel('DESEN RENGİ'),
+                _SwatchPalette(
+                  keyPrefix: 'accent',
+                  gradients: CardSwatches.accentGradients,
+                  solids: CardSwatches.accentSolids,
+                  selectedId: _accentId,
+                  onSelected: (id) => setState(() => _accentId = id),
+                ),
+                const SizedBox(height: 24),
+                const _SectionLabel('KART BİLGİLERİ'),
+                TextFormField(
+                  key: const ValueKey('add_card_name'),
+                  controller: _name,
+                  textCapitalization: TextCapitalization.words,
+                  textInputAction: TextInputAction.next,
+                  maxLength: CardValidators.maxNameLength,
+                  decoration: const InputDecoration(
+                    labelText: 'Kart İsmi',
+                    hintText: 'Örn. Maaş Kartı',
+                    prefixIcon: Icon(Icons.label_outline),
+                    counterText: '',
+                  ),
+                  validator: CardValidators.name,
+                ),
+                const SizedBox(height: 14),
+                ListenableBuilder(
+                  listenable: _number,
+                  builder: (context, _) => _SensitiveField(
+                    fieldKey: const ValueKey('add_card_number'),
+                    controller: _number,
+                    label: 'Kart Numarası',
+                    hint: '0000 0000 0000 0000',
+                    icon: Icons.credit_card,
+                    formatters: [CardNumberInputFormatter()],
+                    validator: CardValidators.number,
+                    suffix: _brand == CardBrand.unknown
+                        ? null
+                        : Padding(
+                            padding: const EdgeInsets.only(right: 14),
+                            child: Text(
+                              _brand.label,
+                              style: theme.textTheme.labelLarge?.copyWith(
+                                color: theme.colorScheme.primary,
+                                fontWeight: FontWeight.w800,
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                          ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: _SensitiveField(
+                        fieldKey: const ValueKey('add_card_expiry'),
+                        controller: _expiry,
+                        label: 'Son Kul. Tarihi',
+                        hint: 'AA/YY',
+                        icon: Icons.event_outlined,
+                        formatters: [ExpiryDateInputFormatter()],
+                        validator: CardValidators.expiry,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ListenableBuilder(
+                        listenable: _number,
+                        builder: (context, _) => _SensitiveField(
+                          fieldKey: const ValueKey('add_card_cvv'),
+                          controller: _cvv,
+                          focusNode: _cvvFocus,
+                          label: 'CVV',
+                          hint: _brand.cvvLength == 4 ? '••••' : '•••',
+                          icon: Icons.password,
+                          obscure: !_showSecrets,
+                          formatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                            LengthLimitingTextInputFormatter(_brand.cvvLength),
+                          ],
+                          validator: (v) => CardValidators.cvv(v, _brand),
                         ),
                       ),
                     ),
-            ),
-          ),
-          const SizedBox(height: 14),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: _SensitiveField(
-                  fieldKey: const ValueKey('add_card_expiry'),
-                  controller: _expiry,
-                  label: 'Son Kul. Tarihi',
-                  hint: 'AA/YY',
-                  icon: Icons.event_outlined,
-                  formatters: [ExpiryDateInputFormatter()],
-                  validator: CardValidators.expiry,
+                  ],
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ListenableBuilder(
-                  listenable: _number,
-                  builder: (context, _) => _SensitiveField(
-                    fieldKey: const ValueKey('add_card_cvv'),
-                    controller: _cvv,
-                    focusNode: _cvvFocus,
-                    label: 'CVV',
-                    hint: _brand.cvvLength == 4 ? '••••' : '•••',
-                    icon: Icons.password,
-                    obscure: !_showSecrets,
-                    formatters: [
-                      FilteringTextInputFormatter.digitsOnly,
-                      LengthLimitingTextInputFormatter(_brand.cvvLength),
-                    ],
-                    validator: (v) => CardValidators.cvv(v, _brand),
+                const SizedBox(height: 14),
+                _SensitiveField(
+                  fieldKey: const ValueKey('add_card_pin'),
+                  controller: _pin,
+                  focusNode: _pinFocus,
+                  label: 'Kart Şifresi (isteğe bağlı)',
+                  hint: '4-6 hane',
+                  icon: Icons.pin_outlined,
+                  obscure: !_showSecrets,
+                  textInputAction: TextInputAction.done,
+                  formatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    LengthLimitingTextInputFormatter(6),
+                  ],
+                  validator: CardValidators.pin,
+                ),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton.icon(
+                    onPressed: () =>
+                        setState(() => _showSecrets = !_showSecrets),
+                    icon: Icon(
+                      _showSecrets
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
+                      size: 18,
+                    ),
+                    label: Text(
+                      _showSecrets
+                          ? 'CVV ve şifreyi gizle'
+                          : 'CVV ve şifreyi göster',
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          _SensitiveField(
-            fieldKey: const ValueKey('add_card_pin'),
-            controller: _pin,
-            focusNode: _pinFocus,
-            label: 'Kart Şifresi (isteğe bağlı)',
-            hint: '4-6 hane',
-            icon: Icons.pin_outlined,
-            obscure: !_showSecrets,
-            textInputAction: TextInputAction.done,
-            formatters: [
-              FilteringTextInputFormatter.digitsOnly,
-              LengthLimitingTextInputFormatter(6),
-            ],
-            validator: CardValidators.pin,
-          ),
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton.icon(
-              onPressed: () => setState(() => _showSecrets = !_showSecrets),
-              icon: Icon(
-                _showSecrets
-                    ? Icons.visibility_off_outlined
-                    : Icons.visibility_outlined,
-                size: 18,
-              ),
-              label: Text(
-                _showSecrets ? 'CVV ve şifreyi gizle' : 'CVV ve şifreyi göster',
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          _SaveButton(saving: _saving, onPressed: _saving ? null : _save),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.lock_outline,
-                size: 14,
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-              const SizedBox(width: 6),
-              Flexible(
-                child: Text(
-                  'Bilgiler şifrelenerek yalnızca bu cihazda saklanır.',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
+                const SizedBox(height: 12),
+                _SaveButton(
+                  saving: _saving,
+                  editing: _isEditing,
+                  onPressed: _saving ? null : _save,
                 ),
-              ),
-            ],
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.lock_outline,
+                      size: 14,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        'Bilgiler şifrelenerek yalnızca bu cihazda saklanır.',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -550,9 +593,14 @@ class _SensitiveField extends StatelessWidget {
 }
 
 class _SaveButton extends StatelessWidget {
-  const _SaveButton({required this.saving, required this.onPressed});
+  const _SaveButton({
+    required this.saving,
+    required this.editing,
+    required this.onPressed,
+  });
 
   final bool saving;
+  final bool editing;
   final VoidCallback? onPressed;
 
   @override
@@ -591,7 +639,9 @@ class _SaveButton extends StatelessWidget {
                 ),
               )
             : const Icon(Icons.lock_outline),
-        label: const Text('KARTI ŞİFRELE VE KAYDET'),
+        label: Text(
+          editing ? 'DEĞİŞİKLİKLERİ KAYDET' : 'KARTI ŞİFRELE VE KAYDET',
+        ),
       ),
     );
   }

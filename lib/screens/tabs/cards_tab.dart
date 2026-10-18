@@ -11,6 +11,7 @@ import '../../widgets/card_back_view.dart';
 import '../../widgets/card_stack.dart';
 import '../../widgets/credit_card_view.dart';
 import '../../widgets/flip_card.dart';
+import '../edit_card_screen.dart';
 
 class CardsTab extends StatefulWidget {
   const CardsTab({super.key});
@@ -25,6 +26,66 @@ class _CardsTabState extends State<CardsTab> {
 
   /// Göz butonuna basılı tutuluyor mu (öndeki kartın bilgileri açılır).
   bool _revealing = false;
+
+  /// Şu an öndeki kart (itemBuilder her yapımda günceller); düzenle/sil ona uygulanır.
+  CardModel? _frontCard;
+
+  Future<void> _editFront() async {
+    final card = _frontCard;
+    if (card == null) return;
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute<void>(builder: (_) => EditCardScreen(card: card)));
+    // Düzenleme sonrası kart ters kalmasın.
+    if (mounted) setState(() => _flippedId = null);
+  }
+
+  Future<void> _deleteFront() async {
+    final card = _frontCard;
+    if (card == null) return;
+    final cards = AppScope.of(context).cards;
+    final messenger = ScaffoldMessenger.of(context);
+    final error = Theme.of(context).colorScheme.error;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        icon: Icon(Icons.delete_outline, color: error, size: 36),
+        title: Text('"${card.name}" silinsin mi?'),
+        content: Text(
+          '**** ${card.lastFour} ile biten kart bu cihazdan kalıcı olarak '
+          'silinecek. Bu işlem geri alınamaz.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Vazgeç'),
+          ),
+          FilledButton(
+            key: const ValueKey('confirm_delete_card'),
+            style: FilledButton.styleFrom(
+              backgroundColor: error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
+            ),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Sil'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    try {
+      await cards.remove(card.id);
+    } catch (_) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Kart silinemedi, tekrar deneyin.')),
+      );
+      return;
+    }
+    if (mounted) setState(() => _flippedId = null);
+    messenger.showSnackBar(SnackBar(content: Text('"${card.name}" silindi')));
+  }
 
   void _toggleFlip(CardModel card) {
     HapticFeedback.lightImpact();
@@ -63,6 +124,7 @@ class _CardsTabState extends State<CardsTab> {
                         onFrontTap: (index) => _toggleFlip(cards[index]),
                         itemBuilder: (context, index, isFront) {
                           final card = cards[index];
+                          if (isFront) _frontCard = card;
                           // Göz basılıyken yalnızca öndeki kartın bilgileri açılır.
                           final masked =
                               settings.maskCardNumbers &&
@@ -77,11 +139,30 @@ class _CardsTabState extends State<CardsTab> {
                       ),
                     ),
             ),
-            _RevealButton(
-              // Gizleme kapalıysa bilgiler zaten görünür; buton pasif.
-              enabled: cards.isNotEmpty && settings.maskCardNumbers,
-              revealing: _revealing,
-              onChanged: (value) => setState(() => _revealing = value),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _ActionButton(
+                  key: const ValueKey('edit_card_button'),
+                  icon: Icons.edit_outlined,
+                  tooltip: 'Kartı düzenle',
+                  onPressed: cards.isEmpty ? null : _editFront,
+                ),
+                const SizedBox(width: 28),
+                _RevealButton(
+                  // Gizleme kapalıysa bilgiler zaten görünür; buton pasif.
+                  enabled: cards.isNotEmpty && settings.maskCardNumbers,
+                  revealing: _revealing,
+                  onChanged: (value) => setState(() => _revealing = value),
+                ),
+                const SizedBox(width: 28),
+                _ActionButton(
+                  key: const ValueKey('delete_card_button'),
+                  icon: Icons.delete_outline,
+                  tooltip: 'Kartı sil',
+                  onPressed: cards.isEmpty ? null : _deleteFront,
+                ),
+              ],
             ),
           ],
         );
@@ -217,6 +298,44 @@ class _EmptyState extends StatelessWidget {
           textAlign: TextAlign.center,
         ),
       ],
+    );
+  }
+}
+
+/// Göz butonunun iki yanındaki küçük yuvarlak işlem butonu (düzenle / sil).
+class _ActionButton extends StatelessWidget {
+  const _ActionButton({
+    super.key,
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(top: 4, bottom: 10),
+      child: IconButton.filledTonal(
+        tooltip: tooltip,
+        onPressed: onPressed,
+        icon: Icon(icon),
+        style: IconButton.styleFrom(
+          fixedSize: const Size(48, 48),
+          backgroundColor: scheme.surfaceContainerHigh.withValues(alpha: 0.6),
+          // Koyu temada simge zeminle kaynaşmasın; pasifken soluk kalır.
+          foregroundColor: scheme.onSurface,
+          disabledForegroundColor: scheme.onSurface.withValues(alpha: 0.38),
+          disabledBackgroundColor: scheme.surfaceContainerHigh.withValues(
+            alpha: 0.4,
+          ),
+          side: BorderSide(color: scheme.outline),
+        ),
+      ),
     );
   }
 }

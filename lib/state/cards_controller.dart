@@ -29,6 +29,29 @@ class CardsController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Aynı kimlikli kartı günceller; sıra korunur. Kimlik yoksa hiçbir şey yapmaz.
+  Future<void> update(CardModel card) async {
+    final index = _cards.indexWhere((c) => c.id == card.id);
+    if (index < 0) return;
+    final updated = List<CardModel>.unmodifiable([
+      for (var i = 0; i < _cards.length; i++) i == index ? card : _cards[i],
+    ]);
+    await _repository.saveAll(updated);
+    _cards = updated;
+    notifyListeners();
+  }
+
+  /// Kartı depodan kalıcı olarak siler.
+  Future<void> remove(String id) async {
+    final updated = List<CardModel>.unmodifiable(
+      _cards.where((c) => c.id != id),
+    );
+    if (updated.length == _cards.length) return;
+    await _repository.saveAll(updated);
+    _cards = updated;
+    notifyListeners();
+  }
+
   /// Tüm veriler silindikten sonra bellekteki kartları da temizler.
   void reset() {
     _cards = const [];
