@@ -16,6 +16,7 @@ class PinEntryView extends StatelessWidget {
     required this.filled,
     required this.onDigit,
     required this.onBackspace,
+    this.onBiometric,
     this.message,
     this.isError = false,
     this.errorTick = 0,
@@ -28,6 +29,7 @@ class PinEntryView extends StatelessWidget {
   final int filled;
   final ValueChanged<String> onDigit;
   final VoidCallback onBackspace;
+  final VoidCallback? onBiometric;
   final String? message;
   final bool isError;
   final int errorTick;
@@ -86,6 +88,7 @@ class PinEntryView extends StatelessWidget {
                     PinPad(
                       onDigit: onDigit,
                       onBackspace: onBackspace,
+                      onBiometric: onBiometric,
                       enabled: enabled,
                     ),
                   ],

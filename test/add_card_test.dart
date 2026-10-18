@@ -228,7 +228,7 @@ void main() {
 
     await openTab(tester, 'Ayarlar');
     final wipe = find.byKey(const ValueKey('settings_wipe_all'));
-    await tester.ensureVisible(wipe);
+    await scrollSettingsTo(tester, wipe);
     await tester.tap(wipe);
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('confirm_wipe_all')));

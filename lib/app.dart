@@ -4,6 +4,7 @@ import 'app_scope.dart';
 import 'screens/home_screen.dart';
 import 'screens/lock_screen.dart';
 import 'screens/pin_setup_screen.dart';
+import 'services/biometric_authenticator.dart';
 import 'services/pin_service.dart';
 import 'services/secure_store.dart';
 import 'state/cards_controller.dart';
@@ -19,6 +20,7 @@ class CardWalletApp extends StatefulWidget {
     super.key,
     required this.store,
     required this.pinService,
+    required this.biometrics,
     required this.themeController,
     required this.settings,
     required this.cards,
@@ -26,6 +28,7 @@ class CardWalletApp extends StatefulWidget {
 
   final KeyValueStore store;
   final PinService pinService;
+  final BiometricAuthenticator biometrics;
   final ThemeController themeController;
   final SettingsController settings;
   final CardsController cards;
@@ -92,6 +95,7 @@ class _CardWalletAppState extends State<CardWalletApp> {
   Widget build(BuildContext context) {
     return AppScope(
       pinService: widget.pinService,
+      biometrics: widget.biometrics,
       themeController: widget.themeController,
       settings: widget.settings,
       cards: widget.cards,
@@ -135,6 +139,8 @@ class _CardWalletAppState extends State<CardWalletApp> {
     ),
     _AuthGate.locked || _AuthGate.unlocked => LockScreen(
       pinService: widget.pinService,
+      biometrics: widget.biometrics,
+      settings: widget.settings,
       onUnlocked: _unlock,
     ),
   };

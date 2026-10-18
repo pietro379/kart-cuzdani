@@ -12,11 +12,13 @@ class SettingsController extends ChangeNotifier {
 
   static const _userNameKey = 'profile.user_name';
   static const _maskCardNumbersKey = 'pref.mask_card_numbers';
+  static const _biometricUnlockKey = 'pref.biometric_unlock';
 
   final KeyValueStore _store;
 
   String _userName = '';
   bool _maskCardNumbers = true;
+  bool _biometricUnlock = false;
 
   String get userName => _userName;
 
@@ -24,9 +26,14 @@ class SettingsController extends ChangeNotifier {
   /// Güvenlik için varsayılan olarak açıktır.
   bool get maskCardNumbers => _maskCardNumbers;
 
+  /// Açıkken kilit ekranı parmak izi / yüz ile açılabilir. PIN her zaman geçerlidir.
+  /// Varsayılan olarak kapalıdır; açmak için doğrulama gerekir.
+  bool get biometricUnlock => _biometricUnlock;
+
   Future<void> load() async {
     _userName = await _store.read(_userNameKey) ?? '';
     _maskCardNumbers = await _store.read(_maskCardNumbersKey) != 'false';
+    _biometricUnlock = await _store.read(_biometricUnlockKey) == 'true';
     notifyListeners();
   }
 
@@ -45,10 +52,17 @@ class SettingsController extends ChangeNotifier {
     await _store.write(_maskCardNumbersKey, '$value');
   }
 
+  Future<void> setBiometricUnlock(bool value) async {
+    _biometricUnlock = value;
+    notifyListeners();
+    await _store.write(_biometricUnlockKey, '$value');
+  }
+
   /// Tüm veriler silindikten sonra bellekteki durumu da varsayılana döndürür.
   void reset() {
     _userName = '';
     _maskCardNumbers = true;
+    _biometricUnlock = false;
     notifyListeners();
   }
 }

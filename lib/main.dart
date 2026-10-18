@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'app.dart';
+import 'services/biometric_authenticator.dart';
 import 'services/card_repository.dart';
 import 'services/pin_service.dart';
 import 'services/secure_store.dart';
@@ -20,6 +21,7 @@ Future<void> main() async {
     CardWalletApp(
       store: store,
       pinService: PinService(store),
+      biometrics: LocalBiometricAuthenticator(),
       themeController: themeController,
       settings: settings,
       // Kartlar burada değil, kilit ilk açıldığında yüklenir.

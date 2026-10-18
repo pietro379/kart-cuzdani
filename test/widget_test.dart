@@ -201,7 +201,7 @@ void main() {
       await openTab(tester, 'Ayarlar');
 
       final wipe = find.byKey(const ValueKey('settings_wipe_all'));
-      await tester.ensureVisible(wipe);
+      await scrollSettingsTo(tester, wipe);
       await tester.tap(wipe);
       await tester.pumpAndSettle();
       await tester.tap(find.text('Vazgeç'));
@@ -224,7 +224,7 @@ void main() {
       expect(store.values, isNotEmpty);
 
       final wipe = find.byKey(const ValueKey('settings_wipe_all'));
-      await tester.ensureVisible(wipe);
+      await scrollSettingsTo(tester, wipe);
       await tester.tap(wipe);
       await tester.pumpAndSettle();
       expect(find.text('Tüm veriler silinsin mi?'), findsOneWidget);

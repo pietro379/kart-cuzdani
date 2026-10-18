@@ -8,11 +8,15 @@ class PinPad extends StatelessWidget {
     super.key,
     required this.onDigit,
     required this.onBackspace,
+    this.onBiometric,
     this.enabled = true,
   });
 
   final ValueChanged<String> onDigit;
   final VoidCallback onBackspace;
+
+  /// Doluysa sol alttaki boş yerde parmak izi düğmesi gösterilir.
+  final VoidCallback? onBiometric;
   final bool enabled;
 
   static const _rows = [
@@ -30,7 +34,15 @@ class PinPad extends StatelessWidget {
           _PadRow(children: [for (final d in row) _digit(d)]),
         _PadRow(
           children: [
-            const SizedBox(width: _PadButton.size, height: _PadButton.size),
+            if (onBiometric == null)
+              const SizedBox(width: _PadButton.size, height: _PadButton.size)
+            else
+              _PadButton(
+                key: const ValueKey('pin_key_biometric'),
+                semanticLabel: 'Parmak izi ile aç',
+                onTap: enabled ? onBiometric : null,
+                child: const Icon(Icons.fingerprint, size: 30),
+              ),
             _digit('0'),
             _PadButton(
               key: const ValueKey('pin_key_backspace'),

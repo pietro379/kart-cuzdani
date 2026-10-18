@@ -59,35 +59,100 @@ class SettingsTab extends StatelessWidget {
         const SizedBox(height: 24),
         const _SectionLabel('GİZLİLİK'),
         Card(
-          child: ListenableBuilder(
-            listenable: settings,
-            builder: (context, _) => SwitchListTile(
-              key: const ValueKey('settings_mask_cards'),
-              secondary: Icon(
-                settings.maskCardNumbers
-                    ? Icons.visibility_off_outlined
-                    : Icons.visibility_outlined,
-              ),
-              title: const Text('Kart bilgilerini gizle'),
-              subtitle: Text(
-                formatCardNumber(
-                  _previewNumber,
-                  masked: settings.maskCardNumbers,
+          child: Column(
+            children: [
+              ListenableBuilder(
+                listenable: settings,
+                builder: (context, _) => SwitchListTile(
+                  key: const ValueKey('settings_mask_cards'),
+                  secondary: Icon(
+                    settings.maskCardNumbers
+                        ? Icons.visibility_off_outlined
+                        : Icons.visibility_outlined,
+                  ),
+                  title: const Text('Kart bilgilerini gizle'),
+                  subtitle: Text(
+                    formatCardNumber(
+                      _previewNumber,
+                      masked: settings.maskCardNumbers,
+                    ),
+                    style: const TextStyle(
+                      fontFeatures: [FontFeature.tabularFigures()],
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                  value: settings.maskCardNumbers,
+                  onChanged: settings.setMaskCardNumbers,
                 ),
-                style: const TextStyle(
-                  fontFeatures: [FontFeature.tabularFigures()],
-                  letterSpacing: 1.2,
-                ),
               ),
-              value: settings.maskCardNumbers,
-              onChanged: settings.setMaskCardNumbers,
-            ),
+              const Divider(height: 1),
+              const _BiometricTile(),
+            ],
           ),
         ),
         const SizedBox(height: 32),
         const _SectionLabel('TEHLİKELİ BÖLGE'),
         const _WipeDataButton(),
       ],
+    );
+  }
+}
+
+/// Parmak izi / yüz ile kilit açma anahtarı. Cihazda biyometri kurulu değilse pasiftir;
+/// açmak için bir kez doğrulama gerekir, böylece özellik gerçekten çalışmadan etkinleşmez.
+class _BiometricTile extends StatefulWidget {
+  const _BiometricTile();
+
+  @override
+  State<_BiometricTile> createState() => _BiometricTileState();
+}
+
+class _BiometricTileState extends State<_BiometricTile> {
+  Future<bool>? _available;
+
+  Future<void> _toggle(bool value) async {
+    final scope = AppScope.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    if (value) {
+      final ok = await scope.biometrics.authenticate(
+        'Parmak izi ile açmayı etkinleştirmek için kimliğinizi doğrulayın',
+      );
+      if (!ok) {
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text('Doğrulama yapılamadı, ayar değişmedi.'),
+          ),
+        );
+        return;
+      }
+    }
+    await scope.settings.setBiometricUnlock(value);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scope = AppScope.of(context);
+    _available ??= scope.biometrics.isAvailable();
+    return FutureBuilder<bool>(
+      future: _available,
+      builder: (context, snapshot) {
+        final available = snapshot.data ?? false;
+        return ListenableBuilder(
+          listenable: scope.settings,
+          builder: (context, _) => SwitchListTile(
+            key: const ValueKey('settings_biometric'),
+            secondary: const Icon(Icons.fingerprint),
+            title: const Text('Parmak izi ile aç'),
+            subtitle: Text(
+              available
+                  ? 'Kilit ekranında PIN yerine kullanılabilir. PIN her zaman geçerlidir.'
+                  : 'Bu cihazda parmak izi veya yüz tanıma kurulu değil.',
+            ),
+            value: available && scope.settings.biometricUnlock,
+            onChanged: available ? _toggle : null,
+          ),
+        );
+      },
     );
   }
 }

@@ -2,7 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../services/biometric_authenticator.dart';
 import '../services/pin_service.dart';
+import '../state/settings_controller.dart';
 import '../widgets/pin_entry_view.dart';
 
 /// Uygulamaya her girişte gösterilen PIN kilit ekranı.
@@ -10,10 +12,14 @@ class LockScreen extends StatefulWidget {
   const LockScreen({
     super.key,
     required this.pinService,
+    required this.biometrics,
+    required this.settings,
     required this.onUnlocked,
   });
 
   final PinService pinService;
+  final BiometricAuthenticator biometrics;
+  final SettingsController settings;
   final VoidCallback onUnlocked;
 
   @override
@@ -25,6 +31,8 @@ class _LockScreenState extends State<LockScreen> {
   String? _error;
   int _errorTick = 0;
   bool _busy = false;
+  bool _biometricReady = false;
+  bool _authenticating = false;
   Duration _lockout = Duration.zero;
   Timer? _countdown;
 
@@ -34,12 +42,32 @@ class _LockScreenState extends State<LockScreen> {
   void initState() {
     super.initState();
     _restoreLockout();
+    _prepareBiometric();
   }
 
   @override
   void dispose() {
     _countdown?.cancel();
     super.dispose();
+  }
+
+  /// Biyometrik kilit açma açık ve cihazda kullanılabilirse düğmeyi gösterir ve
+  /// ekran açılır açılmaz bir kez doğrulama penceresi çıkarır. PIN her zaman geçerlidir.
+  Future<void> _prepareBiometric() async {
+    if (!widget.settings.biometricUnlock) return;
+    if (!await widget.biometrics.isAvailable() || !mounted) return;
+    setState(() => _biometricReady = true);
+    await _authenticateWithBiometrics();
+  }
+
+  Future<void> _authenticateWithBiometrics() async {
+    if (_authenticating || _busy) return;
+    _authenticating = true;
+    final ok = await widget.biometrics.authenticate(
+      'Cüzdanın kilidini açmak için kimliğinizi doğrulayın',
+    );
+    _authenticating = false;
+    if (ok && mounted) widget.onUnlocked();
   }
 
   /// Uygulama kapatılıp açılsa bile süren kilidi geri yükler.
@@ -124,6 +152,7 @@ class _LockScreenState extends State<LockScreen> {
       enabled: !_busy && !_lockedOut,
       onDigit: _onDigit,
       onBackspace: _onBackspace,
+      onBiometric: _biometricReady ? _authenticateWithBiometrics : null,
     );
   }
 }

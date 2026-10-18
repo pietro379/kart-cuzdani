@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 
+import 'services/biometric_authenticator.dart';
 import 'services/pin_service.dart';
 import 'state/cards_controller.dart';
 import 'state/settings_controller.dart';
@@ -13,6 +14,7 @@ class AppScope extends InheritedWidget {
   const AppScope({
     super.key,
     required this.pinService,
+    required this.biometrics,
     required this.themeController,
     required this.settings,
     required this.cards,
@@ -22,6 +24,7 @@ class AppScope extends InheritedWidget {
   });
 
   final PinService pinService;
+  final BiometricAuthenticator biometrics;
   final ThemeController themeController;
   final SettingsController settings;
   final CardsController cards;
@@ -41,6 +44,7 @@ class AppScope extends InheritedWidget {
   @override
   bool updateShouldNotify(AppScope oldWidget) =>
       pinService != oldWidget.pinService ||
+      biometrics != oldWidget.biometrics ||
       themeController != oldWidget.themeController ||
       settings != oldWidget.settings ||
       cards != oldWidget.cards;
