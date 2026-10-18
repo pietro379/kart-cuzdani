@@ -36,6 +36,7 @@ kredi/banka kartı cüzdanı. Flutter ile Android ve iOS için geliştirilmişti
 
 - **PIN ile kilit:** 6 haneli PIN; uygulama her açılışta ve arka plana
   alındığında kilitlenir. Kolay tahmin edilen PIN'ler (111111, 123456…) reddedilir.
+- **Parmak izi / yüz ile açma (isteğe bağlı):** Ayarlar'dan açılır; açmak için bir kez doğrulama gerekir. Yalnızca biyometri kabul edilir, PIN her zaman geçerlidir. Cihazda biyometri kurulu değilse seçenek pasif kalır.
 - **Kaba kuvvet koruması:** Art arda 5 hatalı denemede giriş 30 saniye kilitlenir;
   kilit, uygulama kapatılıp açılsa da devam eder.
 - **Kartlarım:** Üst üste binen, kaydırılarak gezilen kart yığını. Öndeki karta
@@ -56,6 +57,7 @@ kredi/banka kartı cüzdanı. Flutter ile Android ve iOS için geliştirilmişti
 | Veri saklama | `flutter_secure_storage` — Android'de Keystore + AES-GCM, iOS'ta Keychain (`unlocked_this_device`, iCloud'a senkronize edilmez) |
 | PIN | Düz metin saklanmaz; rastgele tuzlu PBKDF2-HMAC-SHA256 (100.000 tur) |
 | Bellek | Kart verileri PIN doğrulanmadan belleğe yüklenmez |
+| Biyometri | `local_auth` ile yalnızca parmak izi / yüz kabul edilir (cihaz PIN'i/deseni değil); varsayılan kapalı. PIN hiçbir yerde saklanmaz ve biyometrik doğrulamaya bağlanmaz: kart verisi zaten Keystore/Keychain ile şifrelidir |
 | Ekran | Android'de `FLAG_SECURE` (release sürümde her zaman açık; yalnızca debug yapıda ekran görüntüsü alabilmek için atlanır); iOS'ta ekran görüntüsü/kayıt ve uygulama değiştirici koruması |
 | Yedekleme | Android bulut yedeği ve cihazdan cihaza aktarım kapalı |
 | Klavye | Kart alanlarında öneriler ve klavye öğrenmesi kapalı |
