@@ -33,6 +33,11 @@ class _LockScreenState extends State<LockScreen> {
   bool _busy = false;
   bool _biometricReady = false;
   bool _authenticating = false;
+
+  /// Her doğrulama denemesine bir numara verilir; uygulama arka plana alınınca
+  /// numara ilerler ve eski denemenin gecikmiş sonucu kilidi açamaz.
+  int _biometricSession = 0;
+  late final AppLifecycleListener _lifecycle;
   Duration _lockout = Duration.zero;
   Timer? _countdown;
 
@@ -41,12 +46,14 @@ class _LockScreenState extends State<LockScreen> {
   @override
   void initState() {
     super.initState();
+    _lifecycle = AppLifecycleListener(onHide: () => _biometricSession++);
     _restoreLockout();
     _prepareBiometric();
   }
 
   @override
   void dispose() {
+    _lifecycle.dispose();
     _countdown?.cancel();
     super.dispose();
   }
@@ -63,11 +70,17 @@ class _LockScreenState extends State<LockScreen> {
   Future<void> _authenticateWithBiometrics() async {
     if (_authenticating || _busy) return;
     _authenticating = true;
+    final session = ++_biometricSession;
     final ok = await widget.biometrics.authenticate(
       'Cüzdanın kilidini açmak için kimliğinizi doğrulayın',
     );
     _authenticating = false;
-    if (ok && mounted) widget.onUnlocked();
+    // Sonuç yalnızca bu ekran hâlâ görünürse ve deneme sırasında uygulama
+    // arka plana alınmadıysa kabul edilir.
+    if (!ok || !mounted || session != _biometricSession) return;
+    final state = WidgetsBinding.instance.lifecycleState;
+    if (state != null && state != AppLifecycleState.resumed) return;
+    widget.onUnlocked();
   }
 
   /// Uygulama kapatılıp açılsa bile süren kilidi geri yükler.

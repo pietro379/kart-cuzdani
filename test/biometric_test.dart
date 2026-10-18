@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:add_card_app/services/pin_service.dart';
 import 'package:add_card_app/state/settings_controller.dart';
 import 'package:flutter/material.dart';
@@ -85,6 +87,37 @@ void main() {
       expect(_lockTitle, findsNothing);
     });
 
+    testWidgets('uygulama arka plana alınırsa gecikmiş başarı kilidi açmaz', (
+      tester,
+    ) async {
+      final biometrics = FakeBiometrics()..pending = Completer<bool>();
+      await pumpLocked(tester, biometrics);
+      expect(_lockTitle, findsOneWidget);
+
+      // Doğrulama sürerken uygulama arka plana gider ve geri gelir.
+      for (final state in [
+        AppLifecycleState.inactive,
+        AppLifecycleState.hidden,
+        AppLifecycleState.paused,
+        AppLifecycleState.hidden,
+        AppLifecycleState.inactive,
+        AppLifecycleState.resumed,
+      ]) {
+        tester.binding.handleAppLifecycleStateChanged(state);
+      }
+      await tester.pump();
+
+      // Eski denemenin sonucu şimdi "başarılı" olarak gelir: kabul edilmemeli.
+      biometrics.pending!.complete(true);
+      await tester.pumpAndSettle();
+      expect(_lockTitle, findsOneWidget);
+      expect(_homeTabBar, findsNothing);
+
+      // PIN yine çalışır.
+      await enterPin(tester, testPin);
+      expect(_homeTabBar, findsOneWidget);
+    });
+
     testWidgets('ayar kapalıyken düğme yok ve doğrulama istenmez', (
       tester,
     ) async {
@@ -159,6 +192,33 @@ void main() {
 
       expect(tester.widget<SwitchListTile>(tile).onChanged, isNull);
       expect(find.textContaining('kurulu değil'), findsOneWidget);
+    });
+
+    testWidgets('sistem ayarlarından dönünce kullanılabilirlik yenilenir', (
+      tester,
+    ) async {
+      final biometrics = FakeBiometrics(available: false);
+      await pumpUnlockedApp(tester, biometrics: biometrics);
+      await openSettings(tester);
+      expect(tester.widget<SwitchListTile>(tile).onChanged, isNull);
+
+      // Kullanıcı sistem ayarlarında parmak izi kaydeder ve uygulamaya döner.
+      biometrics.available = true;
+      for (final state in [
+        AppLifecycleState.inactive,
+        AppLifecycleState.hidden,
+        AppLifecycleState.paused,
+        AppLifecycleState.hidden,
+        AppLifecycleState.inactive,
+        AppLifecycleState.resumed,
+      ]) {
+        tester.binding.handleAppLifecycleStateChanged(state);
+      }
+      await tester.pumpAndSettle();
+      await enterPin(tester, testPin); // arka plana alınınca cüzdan kilitlenir
+      await openSettings(tester);
+
+      expect(tester.widget<SwitchListTile>(tile).onChanged, isNotNull);
     });
 
     testWidgets('kapatmak doğrulama istemez', (tester) async {

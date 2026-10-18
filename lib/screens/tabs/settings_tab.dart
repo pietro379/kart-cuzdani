@@ -109,6 +109,29 @@ class _BiometricTile extends StatefulWidget {
 
 class _BiometricTileState extends State<_BiometricTile> {
   Future<bool>? _available;
+  late final AppLifecycleListener _lifecycle;
+
+  @override
+  void initState() {
+    super.initState();
+    // Parmak izi kaydı sistem ayarlarında yapılır; uygulamaya dönüldüğünde
+    // durum yeniden sorgulanır ki anahtar eski haliyle pasif kalmasın.
+    _lifecycle = AppLifecycleListener(onResume: _refreshAvailability);
+  }
+
+  @override
+  void dispose() {
+    _lifecycle.dispose();
+    super.dispose();
+  }
+
+  void _refreshAvailability() {
+    if (!mounted) return;
+    final available = AppScope.of(context).biometrics.isAvailable();
+    setState(() {
+      _available = available;
+    });
+  }
 
   Future<void> _toggle(bool value) async {
     final scope = AppScope.of(context);
