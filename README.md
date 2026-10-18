@@ -12,7 +12,16 @@ kredi/banka kartı cüzdanı. Flutter ile Android ve iOS için geliştirilmişti
 > Uygulama hiçbir veriyi internete göndermez. Release sürümünde ağ erişim izni
 > bulunmaz.
 
-<!-- Ekran görüntüleri: docs/screenshots/ altına ekleyip burada tablo olarak göster (kart yığını, 3B çevirme, kart ekleme, ayarlar). -->
+<p align="center">
+  <img src="docs/screenshots/01-kart-yigini.png" width="19%" alt="Kart yığını">
+  <img src="docs/screenshots/03-kart-arka-yuz.png" width="19%" alt="Kartın arka yüzü">
+  <img src="docs/screenshots/04-kart-ekle.png" width="19%" alt="Kart ekleme">
+  <img src="docs/screenshots/05-kart-duzenle.png" width="19%" alt="Kart düzenleme">
+  <img src="docs/screenshots/06-koyu-tema.png" width="19%" alt="Koyu tema">
+</p>
+
+<p align="center"><sub>Kart yığını · 3B çevirme · canlı önizlemeli kart ekleme · düzenleme · koyu tema. Görüntülerdeki kartlar ve isim örnek (test) verisidir.</sub></p>
+
 
 ## Öne çıkanlar
 
@@ -31,6 +40,8 @@ kredi/banka kartı cüzdanı. Flutter ile Android ve iOS için geliştirilmişti
   dokununca kart 3B olarak çevrilir; arka yüzde CVV ve (varsa) kart şifresi yer alır.
 - **Basılı tut, göster:** Göz butonuna basılı tutulduğu sürece öndeki kartın
   gizlenmiş bilgileri görünür, bırakılınca tekrar gizlenir.
+- **Düzenle ve sil:** Öndeki kartın altındaki butonlarla kart bilgileri ve renkleri
+  sonradan düzenlenir; silme onay ister ve kartı depodan kalıcı olarak kaldırır.
 - **Kart Ekle:** Canlı önizleme, kart rengi ve desen rengi için ayrı paletler
   (gradyan + düz renkler), Luhn kontrolü, son kullanma tarihi ve CVV doğrulaması.
 - **Ayarlar:** Profil adı, koyu/açık tema, kart bilgilerini gizleme ve
@@ -43,7 +54,7 @@ kredi/banka kartı cüzdanı. Flutter ile Android ve iOS için geliştirilmişti
 | Veri saklama | `flutter_secure_storage` — Android'de Keystore + AES-GCM, iOS'ta Keychain (`unlocked_this_device`, iCloud'a senkronize edilmez) |
 | PIN | Düz metin saklanmaz; rastgele tuzlu PBKDF2-HMAC-SHA256 (100.000 tur) |
 | Bellek | Kart verileri PIN doğrulanmadan belleğe yüklenmez |
-| Ekran | Android'de `FLAG_SECURE`; iOS'ta ekran görüntüsü/kayıt ve uygulama değiştirici koruması |
+| Ekran | Android'de `FLAG_SECURE` (release sürümde her zaman açık; yalnızca debug yapıda ekran görüntüsü alabilmek için atlanır); iOS'ta ekran görüntüsü/kayıt ve uygulama değiştirici koruması |
 | Yedekleme | Android bulut yedeği ve cihazdan cihaza aktarım kapalı |
 | Klavye | Kart alanlarında öneriler ve klavye öğrenmesi kapalı |
 | Ağ | Release manifest'te `INTERNET` izni yok |
