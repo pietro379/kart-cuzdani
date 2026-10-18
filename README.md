@@ -6,6 +6,8 @@
 ![Platform](https://img.shields.io/badge/platform-Android%20%7C%20iOS-3ddc84)
 ![Çevrimdışı](https://img.shields.io/badge/%C3%A7al%C4%B1%C5%9Fma-%C3%A7evrimd%C4%B1%C5%9F%C4%B1-10b981)
 
+**[⬇ Android APK'yı indir](https://github.com/pietro379/kart-cuzdani/releases/latest)**
+
 KVKK uyumlu, tamamen çevrimdışı çalışan ve tüm verileri cihazda şifreli saklayan
 kredi/banka kartı cüzdanı. Flutter ile Android ve iOS için geliştirilmiştir.
 
